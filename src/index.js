@@ -1,11 +1,16 @@
 import dotenv from "dotenv"
 dotenv.config({
-    path:'./env'
+    path:'./.env'
 })
 
-import connectDB from "./db/dbconnection.js"
-
 import {DB_NAME} from "./constants.js"
+import connectDB from "./db/dbconnection.js"
+import { app } from "./app.js"
+
+
+
+
+
 
 
 
@@ -16,6 +21,8 @@ import {DB_NAME} from "./constants.js"
 
 connectDB()
 // after connecting database we will use a promise to give a message and listen on server.
+
+
 
 .then(() => {
 

@@ -1,11 +1,26 @@
 import { Router } from "express";
 import { registerUser } from "../controllers/user.controller.js";
-
+import { upload } from "../middlewares/multer.middleware.js";
+import { User } from "../models/user.models.js";
 const router=Router()
 
 
  // now if the route matches register we will call this function or controller whcih we have imported
 // ✅ CORRECT: Chain the .post() method to the route map
-router.route("/register").post(registerUser);
+// impemented middlewares for uploading avatar and cover image.
+router.route("/register").post( 
+
+     upload.fields([
+        {
+            name: "avatar",
+            maxCount:1
+        },
+        {
+            name: "coverImage",
+            maxCount:1,
+
+        }
+     ])
+    ,registerUser);
 
 export default router

@@ -1,4 +1,7 @@
-import mongoose from "mongoose"
+import mongoose,{Schema} from "mongoose"
+import jwt from "jsonwebtoken"
+import bcrypt from "bcrypt"
+
 
 const userSchema= Schema({
 
@@ -11,8 +14,9 @@ const userSchema= Schema({
         index:true,  // we use index for searching field as it is very costly so use it carefully.
 
     },
-    fullname:{
+    fullName:{
         type:String,
+        required:true,
     },
     email:{
         type:String,
@@ -50,13 +54,13 @@ const userSchema= Schema({
 // here we are encrpting the password because we do not want to store the password as clear text in database hence we encrypt it and 
 // then store it in database we only do it when we want to change the password or set it to new password hence there is a 
 // condition . 
+// keep in mind in new version of mongoose we done need to return next
 
 userSchema.pre("save",async function (next) {
-    if(this.isModified("password")){
-        this.password= bcrypt.hash(this.password,10)
-        next()
-    }
+    if(!this.isModified("password"))  return 
 
+        this.password= await bcrypt.hash(this.password,10)
+        
 })
 // to check if the entered password is correct or not
 // this is syntax of making custom methods in userSchema. here methods is the object of userSchema
@@ -72,7 +76,7 @@ userSchema.methods.generateAccessToken = function (){
         username:this.username,
         fullname:this.fullname
         },
-      process.env.ACESS-TOKEN-SECRET,
+      process.env.ACESS_TOKEN_SECRET,
       {
         expiresIN:process.env.ACCESS_TOKEN_EXPIRY
       }  
@@ -85,11 +89,13 @@ userSchema.methods.generateRefreshToken = function (){ // refresh token contains
         _id: this._id,
         
         },
-      process.env.REFRESH-TOKEN-SECRET,
+      process.env.REFRESH_TOKEN_SECRET,
       {
-        expiresIN:process.env.refreshToken_TOKEN_EXPIRY
+        expiresIN:process.env.REFRESH_TOKEN_SECRET
       }  
     )
 }
 
 const User = mongoose.model("User",userSchema)
+
+export {User}

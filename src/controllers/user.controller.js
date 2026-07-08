@@ -5,6 +5,39 @@ import { uploadoncloudinary } from "../utils/Cloudinary.js";
 import { Apiresponse } from "../utils/Apiresponse.js";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken"
+// for generating the tokens we have make a separate function because of high reusability.
+const generateAccessAndRefreshTokens= async((UserId) =>{
+
+   try {
+     const user= await User.findById(UserId)
+ 
+     const accessToken=user.generateAccessToken();
+     const refreshToken=user.generateRefreshToken();
+     if(!accessToken)
+         throw new ApiError(400,"unauthorized generation")
+ 
+     // now storing the refresh token in database as we have the object user of database so adding one more field to object
+ 
+     user.refreshToken=refreshToken;
+
+     // now save it in database
+
+     await user.save({ ValidateBeforeSave: false})
+ 
+     // return the accesstoken and refresh token objects
+ 
+     return {accessToken,refreshToken};
+ 
+ 
+   } catch (error) {
+         console.log(error)
+         throw new ApiError(400,"something went wrong during generation of tokens")
+    
+   }
+
+
+
+})
 
 
 
@@ -111,11 +144,117 @@ const registerUser= asyncHandler(async(req,res) =>{
 })
 
 
-// now for  just checking input taking from frontend(postman)
+// this function is for login.
+
+const logInUser= asyncHandler(async(req,res)=>{
+
+    // steps for log in 
+    //1. req ->data
+    //2. username or email -> atleast one is required
+    //3. find the user
+    //4. password check (verify it)
+    //5. generate access token and refresh token
+    //6. send tokens as cookies
+    //7. send the response
+
+    const {username,email,password}=req.body
+
+    if(!username && !email)
+        throw new ApiError(404," atleast proveide one thing for login either email or username")
+
+    const user = await  User.findOne({
+           $or: [{ username },{ email }]
+    })
+
+    // verifying the password
+
+    const isPasswordValid= await  user.isPasswordCorrect(password)
+
+    if(!isPasswordValid)
+        throw ApiError(401,"unauthorized access -> wrong password")
+
+    // for generating token we will make a separate function. and pass user._id from here.
+
+    const {accessToken,refreshToken}= await generateAccessAndRefreshTokens(user._id);
+
+    // now sending tokens as cookies
+
+    const options ={
+        httpOnly:true,
+        secure:true
+    }
+
+    // again going to database as previous user as no accesstoken and refreshtoken , it is a costly task.
+    // and also avoid to send password and refresh token
+
+    const loggedInUser= await User.findById(user._id).select("-password -refreshToken");
+
+    return res
+    .status(200)
+    .cookie("accessToken",accessToken,options)
+    .cookie("refreshToken",refreshToken,options)
+    .json(
+        new Apiresponse(
+
+            200,
+            {
+                user: loggedInUser,accessToken,refreshToken
+            },
+            "user is logged in successfully"
+
+        )
+
+        
+    )
+
+})
+
+// now for log out the user.
+
+const logOutUser=asyncHandler(async(req,res)=>{
+   // 1. end the token and delete refresh token from database
+   //2. clear the cookies of both access and refresh token.
+
+
+    // go to database and delete or refresh the refresh token to empty .
+
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $unset:{
+                refreshToken: 1 // this removes the field from document
+            }
+        },
+        {
+            new:true // it makes clear that now if you access the user it have no refresh token .
+
+        }
+
+    )
+
+
+    const options={
+        httpOnly:true,
+        secure:true,
+    }
+
+    return res
+    .status(200)
+    .ClearCookie("accessToken",options)
+    .ClearCookie("refreshToken",options)
+    .json(new Apiresponse(200, {}, "User logged out"))
+})
+
+
+
+
+
 
 
 
 
 export {
-    registerUser
+    registerUser,
+    loginUser,
+    logOutUser,
 }

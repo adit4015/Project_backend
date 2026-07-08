@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { registerUser, logInUser ,logOutUser,refreshAccessToken} from "../controllers/user.controller.js";
+import { registerUser, logInUser ,logOutUser,refreshAccessToken,changeCurrentPassword, getCurrentUser, updateAccountDetails,    UpdateUserAvatar, UpdateCoverImage} from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
+import { verifyJwt } from "../middlewares/auth.middleware.js";
 import { User } from "../models/user.models.js";
 const router=Router()
 
@@ -10,14 +11,15 @@ const router=Router()
 // impemented middlewares for uploading avatar and cover image.
 router.route("/register").post( 
 
+
      upload.fields([
-        {
+        {                              
             name: "avatar",
             maxCount:1
         },
         {
             name: "coverImage",
-            maxCount:1,
+            maxCount:1,   
 
         }
      ])
@@ -32,7 +34,35 @@ router.route("/register").post(
 
     router.route("/refresh-token").post(refreshAccessToken);
 
+    router.route("change-password").post(verifyJwt,changeCurrentPassword)
+
+    router.route("get-user").post(verifyJwt, getCurrentUser)
+
+    router.route("update-account-details").post(verifyJwt,  updateAccountDetails)
+
+    router.route("change-avatar-image").post(
+         upload.field([
+        {                              
+            name: "avatar",
+            maxCount:1
+        },
+    ])
+    ,verifyJwt, UpdateUserAvatar);
+
+     router.route("change-cover-image").post(
+         upload.field([
+        {                              
+            name: "coverImage",
+            maxCount:1
+        },
+    ])
+    ,verifyJwt, UpdateCoverImage);
+    
+
 
 
 
 export default router
+
+
+ 

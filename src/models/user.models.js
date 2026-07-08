@@ -49,7 +49,7 @@ const userSchema= Schema({
 
 
 
-// two impoertant points from  this is password and refresh token .we have to take care of password.
+// two important points from  this is password and refresh token .we have to take care of password.
 
 // here we are encrpting the password because we do not want to store the password as clear text in database hence we encrypt it and 
 // then store it in database we only do it when we want to change the password or set it to new password hence there is a 

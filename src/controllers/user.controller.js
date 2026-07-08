@@ -245,6 +245,70 @@ const logOutUser=asyncHandler(async(req,res)=>{
     .json(new Apiresponse(200, {}, "User logged out"))
 })
 
+// now controller for refreshing the access token so that we dont need to enter password again and again. this concept of two tokens is first pinned by google
+
+const refreshAccessToken= asyncHandler(async(req,res) =>{
+
+    // first access the present refresh token from cookies
+
+    const incomingRefreshToken= req.cookies?.refreshToken || req.body.refreshToken
+
+    if(!incomingRefreshToken)
+        throw new ApiError(400, " Unauthorized request")
+
+    // now verifyinf the incoming refresh token
+
+    try {
+        const decodedToken= jwt.verify(incomingRefreshToken,process.env.REFRESH_TOKEN_SECRET)
+    
+        // now accessing the refresh token which is present in database as refresh token has a field _id so access it with the help
+        // of that (through incomingRefreshToken)
+    
+        const user= await User.findById(decodedToken?._id)
+    
+        if(!user)
+            throw new ApiError(400,"Invalid refresh Token")
+        
+    
+        if(!refreshToken)
+            throw new ApiError(400, " refreshToken has been expired  , session expired")
+    
+        // now matching or checking if the incoming refresh token and the stored refresh token in database is same or not 
+    
+        if(incomingRefreshToken != user?.refreshToken)
+            throw new ApiError(400, " session expired")
+    
+        // now all checking is done  generate new access token and refresh token
+    
+        const {accessToken,newRefreshToken} =  await generateAccessAndRefreshTokens(user._id);
+    
+    
+        const options ={
+            httpOnly:true,
+            secure:true,
+        }
+    
+        res
+        .status(200)
+        .cookie("accessToken",accessToken,options)
+        .cookie("refreshToken",newRefreshToken,options)
+        .json(
+            new Apiresponse(
+                200,
+                {
+                    accessToken, refreshToken: newRefreshToken
+                },
+                " Access token refreshed "
+            )
+    
+        )
+    } catch (error) {
+        throw new ApiError(400,error?.message || "invalid refresh token")
+        
+    }
+})
+
+
 
 
 
@@ -255,6 +319,10 @@ const logOutUser=asyncHandler(async(req,res)=>{
 
 export {
     registerUser,
-    loginUser,
+    logInUser,
     logOutUser,
+    refreshAccessToken,
+
+
+
 }

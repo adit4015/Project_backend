@@ -6,13 +6,13 @@ import { Apiresponse } from "../utils/Apiresponse.js";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken"
 // for generating the tokens we have make a separate function because of high reusability.
-const generateAccessAndRefreshTokens= async((UserId) =>{
+const generateAccessAndRefreshTokens= async(UserId) =>{
 
    try {
      const user= await User.findById(UserId)
  
-     const accessToken=user.generateAccessToken();
-     const refreshToken=user.generateRefreshToken();
+     const accessToken= await user.generateAccessToken();
+     const refreshToken=await user.generateRefreshToken();
      if(!accessToken)
          throw new ApiError(400,"unauthorized generation")
  
@@ -37,7 +37,7 @@ const generateAccessAndRefreshTokens= async((UserId) =>{
 
 
 
-})
+}
 
 
 
@@ -157,7 +157,7 @@ const logInUser= asyncHandler(async(req,res)=>{
     //6. send tokens as cookies
     //7. send the response
 
-    const {username,email,password}=req.body
+    const {username,email,password} = req.body
 
     if(!username && !email)
         throw new ApiError(404," atleast proveide one thing for login either email or username")
@@ -166,12 +166,15 @@ const logInUser= asyncHandler(async(req,res)=>{
            $or: [{ username },{ email }]
     })
 
+    if(!user)
+        throw new ApiError(400,"register first there is no such user")
+
     // verifying the password
 
     const isPasswordValid= await  user.isPasswordCorrect(password)
 
     if(!isPasswordValid)
-        throw ApiError(401,"unauthorized access -> wrong password")
+        throw  ApiError(401,"unauthorized access -> wrong password")
 
     // for generating token we will make a separate function. and pass user._id from here.
 
@@ -240,8 +243,8 @@ const logOutUser=asyncHandler(async(req,res)=>{
 
     return res
     .status(200)
-    .ClearCookie("accessToken",options)
-    .ClearCookie("refreshToken",options)
+    .clearCookie("accessToken",options)
+    .clearCookie("refreshToken",options)
     .json(new Apiresponse(200, {}, "User logged out"))
 })
 
@@ -256,7 +259,7 @@ const refreshAccessToken= asyncHandler(async(req,res) =>{
     if(!incomingRefreshToken)
         throw new ApiError(400, " Unauthorized request")
 
-    // now verifyinf the incoming refresh token
+    // now verifying the incoming refresh token
 
     try {
         const decodedToken= jwt.verify(incomingRefreshToken,process.env.REFRESH_TOKEN_SECRET)
@@ -270,8 +273,7 @@ const refreshAccessToken= asyncHandler(async(req,res) =>{
             throw new ApiError(400,"Invalid refresh Token")
         
     
-        if(!refreshToken)
-            throw new ApiError(400, " refreshToken has been expired  , session expired")
+      
     
         // now matching or checking if the incoming refresh token and the stored refresh token in database is same or not 
     
@@ -310,11 +312,11 @@ const refreshAccessToken= asyncHandler(async(req,res) =>{
 
 
 // now controller for changing the current password  , we use middleware auth so we have req.user
-const changeCurrentPassword= asyncHandler((req,res) =>{
+const changeCurrentPassword= asyncHandler(async(req,res) =>{
 
     /// taking the current password and new password from the user.
 
-    const {cuurentpassword, newpassword} = req.body
+    const {currentpassword, newpassword} = req.body
 
     // now accessing the current password from database through req.user and then check if that input currentpassword matches
     // the password which is initially in database . using ispasswordcorrect method for checking the password
@@ -323,7 +325,7 @@ const changeCurrentPassword= asyncHandler((req,res) =>{
     const check= user.isPasswordCorrect(currentpassword)
 
     if(!check)
-        throw ApiError(400, " please enter correct current password to change it")
+        throw new ApiError(400, " please enter correct current password to change it")
 
 
 
@@ -362,7 +364,7 @@ const changeCurrentPassword= asyncHandler((req,res) =>{
 
 // controller for get current user
 
-const getCurrentUser = asyncHandler((req,res) =>{
+const getCurrentUser = asyncHandler(async(req,res) =>{
     return res
     .status(200)
     .json(
@@ -379,7 +381,7 @@ const getCurrentUser = asyncHandler((req,res) =>{
 
 // controller for changing account details
 
-const updateAccountDetails = asyncHandler((req,res) =>{
+const updateAccountDetails = asyncHandler(async(req,res) =>{
 
     // changing both email and username
 
@@ -391,8 +393,10 @@ const updateAccountDetails = asyncHandler((req,res) =>{
     const user = User.findByIdAndUpdate(
         req.user._id,
         {
+            $set:{
             username: username,
             email: email
+            }
         },
         {
             new: true  //  so it returns the updated user further.
@@ -402,9 +406,11 @@ const updateAccountDetails = asyncHandler((req,res) =>{
     return res
     .status(200)
     .json(
+      new Apiresponse(
         200,
-        {},
-        "User account details updated successfully"
+        user,
+        "account detail updated successfully"
+      )
 
     )
 })
@@ -413,7 +419,7 @@ const updateAccountDetails = asyncHandler((req,res) =>{
 // for changing the avatar image -> we have to use two middlewares here ,(multer and auth both)
 
 
-const UpdateUserAvatar = asyncHandler((req,res) =>{
+const UpdateUserAvatar = asyncHandler(async(req,res) =>{
 
     // getting the avatar image here only one file is uploaded so no need to use files just use file
 
@@ -430,11 +436,14 @@ const UpdateUserAvatar = asyncHandler((req,res) =>{
         throw new ApiError(400, " no url is generated by cloudinary")
 
     // now storing it in database
+  
 
     const user = await User.findByIdAndUpdate(
         req.user._id,
         {
+            $set:{
             avatar : avatar.url
+            }
         },
         {
             new : true
@@ -445,14 +454,16 @@ const UpdateUserAvatar = asyncHandler((req,res) =>{
     return res
     .status(200)
     .json(
+        new Apiresponse(
         200,
         {},
         "avatar image is uploaded successfully",
+        )
     )
 })
 
 
-const UpdateCoverImage = asyncHandler((req,res) =>{
+const UpdateCoverImage = asyncHandler(async(req,res) =>{
 
     // getting the avatar image here only one file is uploaded so no need to use files just use file
 
@@ -473,7 +484,9 @@ const UpdateCoverImage = asyncHandler((req,res) =>{
     const user = await User.findByIdAndUpdate(
         req.user._id,
         {
+            $set:{
             coverImage : coverImage.url
+            }
         },
         {
             new : true
@@ -484,11 +497,16 @@ const UpdateCoverImage = asyncHandler((req,res) =>{
     return res
     .status(200)
     .json(
+        new Apiresponse(
         200,
         {},
         "cover  image is uploaded successfully",
+        )
     )
 })
+
+
+
 
 
 

@@ -30,7 +30,7 @@ router.route("/register").post(
     router.route("/login").post(logInUser);
 
    
-    router.route("LogOut").post(verifyJwt,logOutUser)  // for log out we will use a middleware verify jwt.
+    router.route("/LogOut").post(verifyJwt,logOutUser)  // for log out we will use a middleware verify jwt.
 
     router.route("/refresh-token").post(refreshAccessToken);
 
@@ -41,7 +41,7 @@ router.route("/register").post(
     router.route("update-account-details").post(verifyJwt,  updateAccountDetails)
 
     router.route("change-avatar-image").post(
-         upload.field([
+         upload.fields([
         {                              
             name: "avatar",
             maxCount:1
@@ -50,7 +50,7 @@ router.route("/register").post(
     ,verifyJwt, UpdateUserAvatar);
 
      router.route("change-cover-image").post(
-         upload.field([
+         upload.fields([
         {                              
             name: "coverImage",
             maxCount:1
